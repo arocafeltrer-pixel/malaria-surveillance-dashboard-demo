@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>html{color-scheme:light dark}body{margin:0}[hidden]{display:none!important}</style>
+<title>Malaria Surveillance Sensitivity</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: one column of analysis panels under a filter bar; summary first, detail and rankings below. */
+:root{
+  --bg:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#6b6964;
+  --grid:#e1e0d9;--axis:#c3c2b7;--border:rgba(11,11,11,.12);
+  --s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--none:#b9b8b0;
+  --good:#0ca30c;--warn:#fab219;--crit:#d03b3b;--accent:#184f95;--accent-fill:rgba(42,120,214,.14);
+  --font:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--muted:#9c9a93;
+  --grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,.12);
+  --s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--none:#4a4a46;--accent:#6da7ec;--accent-fill:rgba(57,135,229,.2);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--muted:#9c9a93;
+  --grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,.12);
+  --s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--none:#4a4a46;--accent:#6da7ec;--accent-fill:rgba(57,135,229,.2);color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.5;
+  padding-block:24px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:32px;min-width:0}
+h1{font-size:26px;line-height:1.2;font-weight:600;margin:0;text-wrap:balance}
+h2{font-size:16px;font-weight:600;margin:0 0 2px;text-wrap:balance}
+h3{font-size:13px;font-weight:600;margin:0 0 6px}
+p{margin:0}
+.sub{color:var(--ink2);font-size:13px;max-width:78ch;margin-bottom:10px}
+.badge{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border:1px solid var(--axis);border-radius:999px;color:var(--ink2);vertical-align:middle;margin-left:8px}
+.top p{color:var(--ink2);margin-top:6px;max-width:80ch}
+.filters{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:flex-end;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+.filters label,.lab{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+select,input[type=number]{font:inherit;font-size:13px;color:var(--ink);background:var(--bg);border:1px solid var(--axis);border-radius:6px;padding:6px 8px;min-width:0;text-transform:none;letter-spacing:0;font-weight:400}
+input[type=range]{width:100%;accent-color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.seg{display:inline-flex;border:1px solid var(--axis);border-radius:6px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;padding:6px 12px;background:var(--bg);color:var(--ink);border:0;cursor:pointer}
+.seg button+button{border-left:1px solid var(--axis)}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+.headline{font-size:17px;line-height:1.5;max-width:92ch;text-wrap:pretty}
+.headline b{font-weight:600}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;min-width:0}
+.kl{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.kv{font-size:26px;font-weight:600;line-height:1.2;margin:4px 0 2px;font-variant-numeric:tabular-nums}
+.ks{font-size:12px;color:var(--ink2)}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;min-width:0}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--ink2);margin-top:12px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:2px;display:inline-block;flex:none}
+.sw.hatch{background:repeating-linear-gradient(45deg,var(--ink2) 0 1.5px,transparent 1.5px 5px);opacity:.8;border:1px solid var(--axis)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:13px}
+th{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);text-align:right;padding:6px 8px;border-bottom:1px solid var(--axis);vertical-align:bottom;white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1}
+td.txt,th.txt{text-align:left;white-space:normal;min-width:220px}
+tr.sum td{font-weight:600;border-top:1px solid var(--axis)}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--accent-fill)}
+.dq{min-width:74px}
+.dq .gl{display:inline-block;width:14px;margin-right:4px;font-size:11px;text-align:center}
+.b-g{background:color-mix(in srgb,var(--good) 18%,var(--surface));box-shadow:inset 3px 0 0 var(--good)}
+.b-a{background:color-mix(in srgb,var(--warn) 22%,var(--surface));box-shadow:inset 3px 0 0 var(--warn)}
+.b-r{background:color-mix(in srgb,var(--crit) 18%,var(--surface));box-shadow:inset 3px 0 0 var(--crit)}
+.na{color:var(--muted)}
+.flag{font-weight:600}
+svg text{font-family:var(--font)}
+.t-ink{fill:var(--ink)}.t-ink2{fill:var(--ink2)}.t-muted{fill:var(--muted)}
+.gridl{stroke:var(--grid);stroke-width:1}
+.axisl{stroke:var(--axis);stroke-width:1}
+.xh{stroke:var(--ink2);stroke-width:1;stroke-dasharray:3 3}
+#tip{position:fixed;z-index:50;display:none;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;line-height:1.45;padding:8px 10px;border-radius:6px;max-width:280px;font-variant-numeric:tabular-nums}
+#tip b{font-weight:600}
+.ctl-row{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:flex-end;margin-bottom:12px}
+.ctl-row .grow{flex:1 1 220px;min-width:0}
+.scen-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px}
+.res{font-size:15px;line-height:1.55}
+.res b{font-weight:600}
+.verdict{display:inline-block;font-weight:600;padding:2px 8px;border-radius:4px;border:1px solid var(--axis);font-size:13px}
+.v-ok{box-shadow:inset 3px 0 0 var(--good)}.v-no{box-shadow:inset 3px 0 0 var(--crit)}
+.bar3{display:flex;height:22px;border-radius:4px;overflow:hidden;gap:2px;margin:8px 0}
+.bar3 div{min-width:2px}
+details{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px}
+summary{cursor:pointer;font-weight:600}
+dl{margin:12px 0 0;display:grid;grid-template-columns:minmax(0,200px) minmax(0,1fr);gap:8px 16px;font-size:13px}
+dt{font-weight:600}dd{margin:0;color:var(--ink2)}
+@media (max-width:640px){dl{grid-template-columns:1fr}.kv{font-size:22px}h1{font-size:22px}}
+.wts{display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:10px}
+.wts label{font-size:12px;text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink2)}
+.wts input{width:64px}
+.empty{color:var(--ink2);padding:24px 0;text-align:center}
+@media (prefers-reduced-motion:no-preference){.panel,.kpi{transition:none}}
+</style>
+</head>
+<body>
+
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" style="stroke:var(--ink2);stroke-width:1.6;opacity:.6"/></pattern>
+</defs></svg>
+
+<div class="wrap">
+  <header class="top">
+    <h1>Can routine malaria surveillance see change?<span class="badge">Demo · synthetic data</span></h1>
+    <p>Country X, 2025. Routine reporting through public and private facilities, the EMR exchange and community health workers, set against modelled WHO burden. The page shows how much is captured, how good the reported data are, and the smallest change in burden the system could actually detect.</p>
+  </header>
+
+  <section class="filters" id="filters" aria-label="Filters">
+    <label for="fState">State<select id="fState"></select></label>
+    <label for="fDist">District<select id="fDist"></select></label>
+    <div class="lab">Measure<div class="seg" role="group" aria-label="Measure"><button type="button" id="mCases" aria-pressed="true">Malaria cases</button><button type="button" id="mDeaths" aria-pressed="false">Malaria deaths</button></div></div>
+    <label for="fN">Comparison window<select id="fN"><option value="3">3 months</option><option value="6" selected>6 months</option><option value="9">9 months</option><option value="12">12 months</option></select></label>
+    <label for="fT">Target: detect a change of<select id="fT"><option value="5">5%</option><option value="10" selected>10%</option><option value="15">15%</option><option value="20">20%</option><option value="25">25%</option></select></label>
+  </section>
+
+  <p class="headline" id="headline"></p>
+  <section class="kpis" id="kpis" aria-label="Key figures"></section>
+
+  <section>
+    <h2 id="h-wf"></h2>
+    <p class="sub">Each step removes what is not expected to be reported (no formal care), then the unreported share in each reporting system, largest first.</p>
+    <div class="panel" id="wf"></div>
+  </section>
+
+  <section>
+    <h2>Where the estimate should be reported, and what was</h2>
+    <p class="sub">Top bar: the WHO estimate split by the system each case or death is expected to pass through. Bottom bar: what each system reported, on the same scale. Hatched areas are expected but not reported.</p>
+    <div class="panel"><div id="pair"></div>
+    <div class="legend" id="pairLeg"></div></div>
+  </section>
+
+  <section>
+    <h2 id="h-mdc"></h2>
+    <p class="sub" id="mdcSub"></p>
+    <div class="cols">
+      <div class="panel"><h3>Effective minimum detectable change, by channel</h3><div id="mdcBars"></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Detection scenario</h2>
+    <p class="sub">Pick a channel and a true change in burden among the people it serves. The tool estimates what the combined reporting system would show, and whether that would stand out from noise.</p>
+    <div class="panel">
+      <div class="ctl-row">
+        <label for="scSys">Channel where burden changes<select id="scSys"></select></label>
+        <label class="grow" for="scD">True change in burden: <output id="scDv"></output><input type="range" id="scD" min="-50" max="50" step="5" value="-10"></label>
+      </div>
+      <div class="scen-grid"><div class="res" id="scRes"></div><div id="scTbl" class="scroll"></div></div>
+    </div>
+  </section>
+
+  <details>
+    <summary>Definitions, assumptions and limitations</summary>
+    <dl>
+      <dt>Sample data only</dt><dd>Every number on this page is synthetic. National totals are set near the scale of a high-burden country (about 18 million cases and 43,000 deaths a year) but are not WHO figures. There are 9 fictional states and 43 districts; the EMR exchange is live in 5 of the 9 states.</dd>
+      <dt>WHO estimate</dt><dd>Modelled total burden, including cases and deaths that never reach a health service.</dd>
+      <dt>Expected per system</dt><dd>The estimate multiplied by the share expected to pass through that system. In practice the shares would come from care-seeking surveys (DHS/MIS), facility listings and system coverage. Deaths use different shares from cases because more deaths occur at home.</dd>
+      <dt>No formal care</dt><dd>Burden outside any reporting system. It is a modelling gap rather than a reporting gap, so it is excluded from gap rankings.</dd>
+      <dt>% captured</dt><dd>Reported divided by expected, for a system and location.</dd>
+      <dt>Data quality dimensions</dt><dd>Reporting completeness: units that submitted ÷ units expected. Timeliness: reports on time ÷ reports expected. Data element completeness: non-missing key fields ÷ expected. Internal consistency: reports passing logic and outlier checks. Recording accuracy: reported ÷ (expected × completeness). External consistency: agreement of completeness-adjusted reported with an independent survey-based benchmark, folded so over- and under-reporting both lower it. The data quality score on the key figures is the simple average of the available dimensions; dimensions with no reporting units are skipped.</dd>
+      <dt>Minimum detectable change (MDC)</dt><dd>Compares the latest n months with the previous n months at 5% significance and 80% power: MDC = (1.96 + 0.84) × √(2 × φ × μ ÷ n), shown as a percentage of the baseline monthly level μ. The series is standardised to average completeness and divided by a monthly seasonal index. φ is the variance ÷ mean of the last 24 months around a linear trend (minimum 1).</dd>
+      <dt>Reporting-artefact noise</dt><dd>The spread of monthly reporting completeness around its trend, divided by its mean. It is the apparent change in counts caused only by fluctuating reporting.</dd>
+      <dt>Effective MDC</dt><dd>√(MDC² + artefact noise²). Anything above the chosen target (10% by default) is flagged as unable to detect that size of change. Pooling channels usually lowers it because their noise is partly independent.</dd>
+      <dt>Detection power</dt><dd>Probability of detecting a change, using the effective MDC as 2.8 standard errors. It is an approximation: normal distribution, overdispersed counts, seasonality removed, otherwise stable reporting.</dd>
+    </dl>
+  </details>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script>
+'use strict';
+/* ===== CORE: synthetic data + metrics (no DOM) ===== */
+const YEARS = [2021, 2022, 2023, 2024, 2025];
+const T = 36; // monthly series: Jan 2023 .. Dec 2025
+const SYS = [
+  { id: 'pub', name: 'Public facilities (HMIS)', short: 'Public', col: 'var(--s1)' },
+  { id: 'prv', name: 'Private facilities (HMIS)', short: 'Private', col: 'var(--s2)' },
+  { id: 'emr', name: 'EMR exchange', short: 'EMR exchange', col: 'var(--s3)' },
+  { id: 'com', name: 'Community (cHMIS)', short: 'Community', col: 'var(--s4)' }
+];
+const ALL = SYS.map(s => s.id);
+const DIMS = [
+  { k: 'comp', n: 'Reporting completeness', s: 'Completeness' },
+  { k: 'tim', n: 'Timeliness', s: 'Timeliness' },
+  { k: 'dec', n: 'Data element completeness', s: 'Data elements' },
+  { k: 'ic', n: 'Internal consistency', s: 'Consistency' },
+  { k: 'acc', n: 'Recording accuracy', s: 'Accuracy' },
+  { k: 'ext', n: 'External consistency', s: 'External' }
+];
+let W = [1, 1, 1, 1, 1, 1]; // composite weights (adjustable in the UI)
+
+function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const rnd = mulberry(1157);
+function nrm() { let u = 0; while (u === 0) u = rnd(); const v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const mean = a => a.reduce((p, v) => p + v, 0) / a.length;
+
+const STATES = [
+  { name: 'Aldoria', b: 1.7, nd: 6, peak: 9, amp: 0.50, emr: true, q: 0.02 },
+  { name: 'Brevana', b: 1.5, nd: 5, peak: 9, amp: 0.50, emr: true, q: -0.02 },
+  { name: 'Casmere', b: 1.3, nd: 5, peak: 8, amp: 0.45, emr: false, q: -0.06 },
+  { name: 'Dunmark', b: 1.1, nd: 5, peak: 8, amp: 0.40, emr: true, q: 0.03 },
+  { name: 'Estavia', b: 1.0, nd: 5, peak: 7, amp: 0.35, emr: false, q: 0.0 },
+  { name: 'Farrowe', b: 0.8, nd: 4, peak: 7, amp: 0.30, emr: true, q: 0.05 },
+  { name: 'Galvan', b: 0.7, nd: 5, peak: 6, amp: 0.20, emr: false, q: -0.04 },
+  { name: 'Hesper', b: 0.5, nd: 4, peak: 6, amp: 0.15, emr: false, q: 0.02 },
+  { name: 'Iravel', b: 0.4, nd: 4, peak: 6, amp: 0.15, emr: true, q: -0.08 }
+];
+const SUFFIX = ['North', 'South', 'East', 'West', 'Central', 'Lakeside', 'Highland', 'Delta'];
+const CASES25 = 18.4e6, DEATHS25 = 43000;
+const FAC = { cases: { 2021: 1.14, 2022: 1.09, 2023: 1.05, 2024: 1.02, 2025: 1 }, deaths: { 2021: 1.12, 2022: 1.08, 2023: 1.05, 2024: 1.02, 2025: 1 } };
+
+const D = [];
+STATES.forEach((st, si) => { st.wm = null; for (let j = 0; j < st.nd; j++) D.push({ id: D.length, name: st.name + ' ' + SUFFIX[j], state: si }); });
+D.forEach(d => { d.w = STATES[d.state].b * Math.exp(0.55 * nrm()); });
+[3, 17, 26, 38].forEach(i => { D[i].w *= 0.12; });
+const sumW = D.reduce((p, d) => p + d.w, 0);
+D.forEach(d => { d.c25 = d.w / sumW * CASES25; d.d25raw = d.c25 * 0.0024 * Math.pow(STATES[d.state].b, 0.25) * Math.exp(0.25 * nrm()); });
+const sumD = D.reduce((p, d) => p + d.d25raw, 0);
+D.forEach(d => {
+  d.d25 = d.d25raw / sumD * DEATHS25;
+  d.est = { cases: {}, deaths: {} };
+  YEARS.forEach(y => { d.est.cases[y] = d.c25 * FAC.cases[y]; d.est.deaths[y] = d.d25 * FAC.deaths[y]; });
+});
+
+function mkShares(base) {
+  const o = {}; let sum = 0;
+  for (const s of ALL) { o[s] = base[s] * (1 + 0.10 * nrm()); sum += o[s]; }
+  if (1 - sum < 0.08) { const f = 0.92 / sum; for (const s of ALL) o[s] *= f; o.none = 0.08; } else o.none = 1 - sum;
+  return o;
+}
+// seasonal weights per state
+STATES.forEach(st => {
+  const raw = []; for (let m = 0; m < 12; m++) raw.push(1 + st.amp * Math.cos(2 * Math.PI * (m - (st.peak - 1)) / 12));
+  const s = raw.reduce((p, v) => p + v, 0); st.wm = raw.map(v => v / s);
+});
+
+const REC = {}, Q = {}, UN = {};
+const SD_C = { pub: 0.02, prv: 0.04, emr: 0.03, com: 0.045 };
+const DIP_P = { pub: 0.03, prv: 0.04, emr: 0.05, com: 0.06 };
+
+D.forEach(d => {
+  const st = STATES[d.state];
+  d.sh = { cases: mkShares({ pub: 0.34, prv: 0.12, emr: 0.10, com: 0.22 }), deaths: mkShares({ pub: 0.36, prv: 0.07, emr: 0.06, com: 0.07 }) };
+  const dEff = (rnd() < 0.16 ? -0.16 : 0) + 0.025 * nrm();
+  const q = st.q + dEff;
+  const up = Math.round(20 + 160 * Math.sqrt(d.w / 2.2) * (0.7 + 0.6 * rnd()));
+  const units = { pub: up, prv: Math.round(0.8 * up * (0.6 + 0.8 * rnd())), emr: Math.max(4, Math.round(0.25 * up * (0.7 + 0.6 * rnd()))), com: Math.round(3 * up * (0.6 + 0.8 * rnd())) };
+  for (const s of ALL) {
+    const key = d.id + '|' + s; UN[key] = units[s];
+    const live = s !== 'emr' || st.emr;
+    let c25, cs, a25, dec25, ic25, tau25;
+    if (s === 'pub') { c25 = clamp(0.86 + q + 0.07 * nrm(), 0.45, 0.97); cs = 0.012 + 0.008 * nrm(); a25 = clamp(0.90 + 0.05 * nrm(), 0.6, 0.98); dec25 = clamp(0.90 + q + 0.05 * nrm(), 0.55, 0.99); ic25 = clamp(0.92 + 0.04 * nrm(), 0.65, 0.995); }
+    else if (s === 'prv') { c25 = clamp(0.55 + q + 0.13 * nrm(), 0.2, 0.93); cs = 0.02 + 0.012 * nrm(); a25 = clamp(0.75 + 0.08 * nrm(), 0.5, 0.97); dec25 = clamp(0.78 + q + 0.08 * nrm(), 0.5, 0.97); ic25 = clamp(0.85 + 0.06 * nrm(), 0.6, 0.99); }
+    else if (s === 'emr') { c25 = clamp(0.84 + q + 0.07 * nrm(), 0.5, 0.97); cs = 0.035 + 0.01 * nrm(); a25 = clamp(0.88 + 0.05 * nrm(), 0.6, 0.98); dec25 = clamp(0.93 + 0.04 * nrm(), 0.6, 0.99); ic25 = clamp(0.95 + 0.03 * nrm(), 0.7, 0.995); }
+    else { c25 = clamp(0.72 + q + 0.12 * nrm(), 0.3, 0.95); cs = 0.02 + 0.012 * nrm(); a25 = clamp(0.70 + 0.10 * nrm(), 0.4, 0.96); dec25 = clamp(0.80 + q + 0.08 * nrm(), 0.5, 0.97); ic25 = clamp(0.86 + 0.06 * nrm(), 0.6, 0.99); }
+    tau25 = clamp(0.88 + 0.07 * nrm(), 0.55, 0.99);
+    const cPath = {}, accPath = {}, qy = {};
+    YEARS.forEach(y => {
+      let c = c25 - cs * (2025 - y);
+      if (!live) c = 0; else if (s === 'emr' && y < 2022) c = 0; else c = clamp(c, 0.05, 0.97);
+      cPath[y] = c;
+      accPath[y] = clamp(a25 - 0.008 * (2025 - y) + 0.015 * nrm(), 0.4, 0.99);
+      qy[y] = {
+        dec: clamp(dec25 - 0.010 * (2025 - y) + 0.01 * nrm(), 0.4, 0.99),
+        ic: clamp(ic25 - 0.006 * (2025 - y) + 0.008 * nrm(), 0.5, 0.995),
+        tau: clamp(tau25 - 0.008 * (2025 - y) + 0.01 * nrm(), 0.5, 0.99)
+      };
+    });
+    // monthly completeness 2023-2025
+    const cm = []; let z = 0, dipLeft = 0, dipDepth = 0;
+    for (let t = 0; t < T; t++) {
+      const y = 2023 + Math.floor(t / 12), base = cPath[y];
+      z = 0.55 * z + SD_C[s] * nrm();
+      let cur = 0;
+      if (dipLeft > 0) { cur = dipDepth; dipLeft--; }
+      else if (rnd() < DIP_P[s]) { dipDepth = 0.08 + 0.2 * rnd(); dipLeft = rnd() < 0.5 ? 0 : 1; cur = dipDepth; }
+      cm.push(base > 0 ? clamp(base + z - cur, 0.03, 0.97) : 0);
+    }
+    Q[key] = { cm, yr: {} };
+    const dFac = clamp(0.82 + 0.06 * nrm(), 0.65, 0.95);
+    const bias = { cases: Math.exp(0.10 * nrm()), deaths: Math.exp(0.10 * nrm()) };
+    const accK = { cases: accPath, deaths: {} }; YEARS.forEach(y => { accK.deaths[y] = accPath[y] * dFac; });
+    for (const k of ['cases', 'deaths']) {
+      const rec = { yr: {}, mon: { rep: [], e: [] } };
+      for (let t = 0; t < T; t++) {
+        const y = 2023 + Math.floor(t / 12);
+        const e = d.est[k][y] * d.sh[k][s] * st.wm[t % 12];
+        const c = cm[t];
+        const a = accK[k][y] * (1 + 0.02 * nrm());
+        const m = e * c * a;
+        let rep = Math.max(0, Math.round(m * (1 + 0.05 * nrm()) + Math.sqrt(m) * nrm() * 1.1));
+        rep = Math.min(rep, Math.round(e));
+        rec.mon.rep.push(rep); rec.mon.e.push(e);
+      }
+      YEARS.forEach(y => {
+        const exp = d.est[k][y] * d.sh[k][s];
+        let rep;
+        if (y >= 2023) { const o = (y - 2023) * 12; rep = 0; for (let t = o; t < o + 12; t++) rep += rec.mon.rep[t]; }
+        else { const m = exp * cPath[y] * accK[k][y]; rep = Math.min(Math.round(exp), Math.round(m * (1 + 0.03 * nrm()))); }
+        rec.yr[y] = { exp, rep, ec: null };
+      });
+      REC[key + '|' + k] = rec;
+    }
+    YEARS.forEach(y => {
+      let c;
+      if (y >= 2023) { const o = (y - 2023) * 12; c = mean(cm.slice(o, o + 12)); } else c = cPath[y];
+      Q[key].yr[y] = { c, tim: c * qy[y].tau, dec: qy[y].dec, ic: qy[y].ic };
+      for (const k of ['cases', 'deaths']) {
+        const r = REC[key + '|' + k].yr[y];
+        if (c > 0.001) { const x = (r.rep / c) / (r.exp * bias[k]); r.ec = x > 0 ? Math.min(x, 1 / x) : 0; }
+      }
+    });
+  }
+});
+
+/* ---- aggregation ---- */
+function agg(ds, sysIds, y, k) {
+  let exp = 0, rep = 0, expC = 0, uE = 0, uR = 0, none = 0, est = 0, wsum = 0, tim = 0, dec = 0, ic = 0, ec = 0;
+  for (const d of ds) {
+    est += d.est[k][y]; none += d.est[k][y] * d.sh[k].none;
+    for (const s of sysIds) {
+      const kk = d.id + '|' + s, r = REC[kk + '|' + k].yr[y], q = Q[kk].yr[y], U = UN[kk];
+      exp += r.exp; rep += r.rep; expC += r.exp * q.c; uE += U; uR += U * q.c;
+      if (q.c > 0.001) { const w = r.exp; wsum += w; tim += q.tim * w; dec += q.dec * w; ic += q.ic * w; ec += r.ec * w; }
+    }
+  }
+  return {
+    exp, rep, gap: exp - rep, pc: exp > 0 ? rep / exp : null, comp: uE ? uR / uE : null,
+    tim: wsum ? tim / wsum : null, dec: wsum ? dec / wsum : null, ic: wsum ? ic / wsum : null,
+    acc: expC > 0 ? rep / expC : null, ext: wsum ? ec / wsum : null, uE, uR, expC, none, est, live: uR > 0.5
+  };
+}
+function composite(m) {
+  if (!m || m.tim == null) return null;
+  let s = 0, w = 0;
+  DIMS.forEach((dm, i) => { const v = m[dm.k]; if (v != null) { s += v * W[i]; w += W[i]; } });
+  return w ? s / w : null;
+}
+function qac(m) { return (m && m.pc != null && m.dec != null && m.ic != null) ? m.pc * m.dec * m.ic : null; }
+
+function monthlyAgg(ds, sysIds, k) {
+  const rep = new Array(T).fill(0), uR = new Array(T).fill(0); let uE = 0;
+  for (const d of ds) for (const s of sysIds) {
+    const kk = d.id + '|' + s, r = REC[kk + '|' + k], q = Q[kk], U = UN[kk];
+    uE += U;
+    for (let t = 0; t < T; t++) { rep[t] += r.mon.rep[t]; uR[t] += U * q.cm[t]; }
+  }
+  return { rep, c: uR.map(v => uE ? v / uE : 0), uE };
+}
+
+/* ---- minimum detectable change ---- */
+function linfit(ys) {
+  const n = ys.length; let sx = 0, sy = 0, sxy = 0, sxx = 0;
+  ys.forEach((y, i) => { sx += i; sy += y; sxy += i * y; sxx += i * i; });
+  const b = (n * sxy - sx * sy) / (n * sxx - sx * sx), a = (sy - b * sx) / n; return { a, b };
+}
+function resSd(ys) { const f = linfit(ys); let s = 0; ys.forEach((y, i) => { const r = y - (f.a + f.b * i); s += r * r; }); return Math.sqrt(s / (ys.length - 2)); }
+function mdc(rep, c, n) {
+  const tot = rep.reduce((p, v) => p + v, 0), cbar = mean(c);
+  if (tot <= 0 || cbar < 0.02) return null;
+  const z = rep.map((v, t) => c[t] > 0.02 ? v * cbar / c[t] : v);
+  const mz = mean(z), sm = [];
+  for (let m = 0; m < 12; m++) sm.push(mean(z.filter((_, t) => t % 12 === m)) / mz);
+  const x = z.map((v, t) => v / sm[t % 12]);          // completeness-standardised, deseasonalised
+  const xr = rep.map((v, t) => v / sm[t % 12]);        // as observed, deseasonalised
+  const last = x.slice(T - 24), sd = resSd(last), mu = mean(x.slice(T - 12));
+  if (!(mu >= 1)) return null; // too few reported events per month to assess
+  const phi = Math.max(1, sd * sd / mu);
+  const abs = 2.8 * Math.sqrt(2 * phi * mu / n), pct = abs / mu;
+  const cl = c.slice(T - 24), art = resSd(cl) / mean(cl);
+  const eff = Math.hypot(pct, art);
+  return { mu, phi, abs, pct, art, eff, xr, sm };
+}
+function mdcFor(ds, sysIds, k, n) { const m = monthlyAgg(ds, sysIds, k); return mdc(m.rep, m.c, n); }
+function Phi(x) {
+  const t = 1 / (1 + 0.2316419 * Math.abs(x)), d = 0.3989423 * Math.exp(-x * x / 2);
+  const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  return x > 0 ? 1 - p : p;
+}
+function power(delta, effPct) { if (effPct == null) return null; const z = Math.abs(delta) / (effPct / 2.8); return Phi(z - 1.96) + Phi(-z - 1.96); }
+
+const FOCUS = {
+  comp: 'Raise reporting completeness: follow up units that did not submit',
+  tim: 'Improve timeliness: reminders and submission deadlines',
+  dec: 'Improve data element completeness: supervision and form checks',
+  ic: 'Fix logic errors at entry: add validation rules',
+  acc: 'Improve recording: audit registers and train staff',
+  ext: 'Investigate the gap against the survey benchmark'
+};
+function focusFor(m, md, sysIds) {
+  if (!m) return '–';
+  if (sysIds.length === 1 && sysIds[0] === 'emr' && !m.live) return 'Roll out the EMR exchange';
+  let worst = null, wv = 0.7;
+  DIMS.forEach(dm => { const v = m[dm.k]; if (v != null && v < wv) { wv = v; worst = dm.k; } });
+  if (worst) return FOCUS[worst];
+  if (md && md.eff > 0.25) return 'Pool channels or strengthen reporting to detect smaller changes';
+  return 'Maintain; verify with data quality audits';
+}
+
+</script>
+<script>
+'use strict';
+/* ===== UI ===== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const ta = h => ` data-tip="${esc(h)}"`;
+const fmt = n => n == null ? '–' : Math.abs(n) >= 1e6 ? (n / 1e6).toFixed(Math.abs(n) >= 1e7 ? 1 : 2) + 'M' : Math.abs(n) >= 1e4 ? (n / 1e3).toFixed(0) + 'k' : Math.abs(n) >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : Math.round(n) + '';
+const nf = new Intl.NumberFormat('en-US');
+const full = n => n == null ? '–' : nf.format(Math.round(n));
+const P = (x, d = 0) => x == null ? '–' : (x * 100).toFixed(d) + '%';
+const MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const mlabel = t => MN[t % 12] + ' ' + (23 + Math.floor(t / 12));
+const S = { state: 'all', dist: 'all', measure: 'cases', n: 6, target: 0.10, scen: { sys: 'pub', delta: -10 } };
+const sysById = id => SYS.find(s => s.id === id);
+const selDs = () => D.filter(d => (S.state === 'all' || d.state === +S.state) && (S.dist === 'all' || d.id === +S.dist));
+function scopeName() { if (S.dist !== 'all') return D[+S.dist].name + ' district'; if (S.state !== 'all') return STATES[+S.state].name + ' state'; return 'Country X'; }
+const nm = () => S.measure === 'cases' ? 'cases' : 'deaths';
+
+/* tooltip */
+const tipEl = $('#tip');
+function showTip(html, x, y) {
+  tipEl.innerHTML = html; tipEl.style.display = 'block';
+  const r = tipEl.getBoundingClientRect(); let l = x + 14, t = y + 14;
+  if (l + r.width > innerWidth - 8) l = x - r.width - 14; if (l < 8) l = 8;
+  if (t + r.height > innerHeight - 8) t = y - r.height - 14; if (t < 8) t = 8;
+  tipEl.style.left = l + 'px'; tipEl.style.top = t + 'px';
+}
+function hideTip() { tipEl.style.display = 'none'; }
+document.addEventListener('pointermove', e => {
+  const t = e.target.closest && e.target.closest('[data-tip]');
+  if (t) showTip(t.getAttribute('data-tip'), e.clientX, e.clientY);
+  else if (!(e.target.closest && e.target.closest('svg.hv'))) hideTip();
+});
+const cw = el => Math.max(280, el.clientWidth - 32);
+
+/* context */
+function ctx() {
+  const ds = selDs(), k = S.measure;
+  return { ds, k, per: SYS.map(s => ({ s, a: agg(ds, [s.id], 2025, k) })), m: agg(ds, ALL, 2025, k), m21: agg(ds, ALL, 2021, k), pooled: mdcFor(ds, ALL, k, S.n) };
+}
+
+/* headline + KPIs */
+function renderHead(c) {
+  const share = c.m.rep / c.m.est, share21 = c.m21.rep / c.m21.est, dpt = (share - share21) * 100;
+  const top = c.per.slice().sort((a, b) => b.a.gap - a.a.gap)[0], md = c.pooled;
+  let h = `In <b>${esc(scopeName())}</b>, routine reporting systems captured <b>${P(share)}</b> of WHO-estimated malaria ${nm()} in 2025, ${dpt >= 0 ? 'up' : 'down'} <b>${Math.abs(dpt).toFixed(1)} points</b> since 2021. The largest gap is in <b>${top.s.short}</b>, where <b>${fmt(top.a.gap)}</b> expected ${nm()} went unreported. `;
+  h += md ? `Pooling all channels, the system can detect a change in burden of about <b>${P(md.eff)}</b> or more across ${S.n}-month windows, which ${md.eff <= S.target ? '<b>meets</b>' : '<b>misses</b>'} the ${P(S.target)} target.` : 'Too few events are reported here to estimate the smallest detectable change.';
+  $('#headline').innerHTML = h;
+  const comp = composite(c.m), dp = ((c.m.rep / c.m.est) - (c.m21.rep / c.m21.est)) * 100;
+  const kp = (l, v, s) => `<div class="kpi"><div class="kl">${l}</div><div class="kv">${v}</div><div class="ks">${s}</div></div>`;
+  $('#kpis').innerHTML =
+    kp('WHO estimate, 2025', fmt(c.m.est), `Modelled total ${nm()}, all care channels`) +
+    kp('Routinely reported', fmt(c.m.rep), `${P(c.m.pc)} of the ${fmt(c.m.exp)} expected through reporting systems`) +
+    kp('Share of WHO estimate captured', P(share), `${dp >= 0 ? '+' : '−'}${Math.abs(dp).toFixed(1)} points since 2021`) +
+    kp('Largest reporting gap', top.s.short, `${fmt(top.a.gap)} expected but not reported · ${P(top.a.pc)} captured`) +
+    kp('Data quality score', P(comp), 'Average of six data quality dimensions') +
+    kp('Smallest detectable change', md ? P(md.eff) : 'n/a', md ? `All channels pooled, ${S.n}-month windows · ${md.eff <= S.target ? 'meets' : 'misses'} the ${P(S.target)} target` : 'Too few events reported');
+}
+
+/* waterfall */
+function renderWaterfall(c) {
+  const el = $('#wf'), Wd = cw(el), lw = Wd < 480 ? 112 : 150, vw = Wd < 480 ? 96 : 140, bw = Math.max(80, Wd - lw - vw - 8);
+  const est = c.m.est, none = c.m.none, rows = [{ l: 'WHO estimate', a: 0, b: est, t: 'tot', v: fmt(est) }, { l: 'No formal care', a: est - none, b: est, t: 'none', v: '−' + fmt(none) + ' · ' + P(none / est) }];
+  let run = est - none;
+  c.per.slice().sort((a, b) => b.a.gap - a.a.gap).forEach(p => { rows.push({ l: p.s.short + ' gap', a: run - p.a.gap, b: run, t: 'gap', s: p.s, v: '−' + fmt(p.a.gap) + ' · ' + P(p.a.gap / est), x: p.a }); run -= p.a.gap; });
+  rows.push({ l: 'Routinely reported', a: 0, b: c.m.rep, t: 'rep', v: fmt(c.m.rep) + ' · ' + P(c.m.rep / est) });
+  const sc = bw / est, rh = 32, H = rows.length * rh + 6; let g = '';
+  rows.forEach((r, i) => {
+    const y = 3 + i * rh, x = lw + r.a * sc, w = Math.max(2, (r.b - r.a) * sc);
+    let tip = `<b>${esc(r.l)}</b><br>${full(r.b - r.a)} ${nm()}`;
+    if (r.t === 'gap') tip += `<br>${P(r.x.pc)} of ${full(r.x.exp)} expected was reported`;
+    let bar;
+    if (r.t === 'tot') bar = `<rect x="${x}" y="${y + 3}" width="${w}" height="20" rx="2" style="fill:var(--ink2)"/>`;
+    else if (r.t === 'rep') bar = `<rect x="${x}" y="${y + 3}" width="${w}" height="20" rx="2" style="fill:var(--ink)"/>`;
+    else if (r.t === 'none') bar = `<rect x="${x}" y="${y + 3}" width="${w}" height="20" rx="2" style="fill:var(--none)"/>`;
+    else bar = `<rect x="${x}" y="${y + 3}" width="${w}" height="20" rx="2" style="fill:${r.s.col};opacity:.3"/><rect x="${x}" y="${y + 3}" width="${w}" height="20" rx="2" style="fill:url(#hatch);stroke:${r.s.col};stroke-width:1.5"/>`;
+    g += `<g${ta(tip)}><rect x="0" y="${y}" width="${Wd}" height="${rh}" fill="transparent"/><text x="0" y="${y + 17}" font-size="12" class="t-ink2">${esc(r.l)}</text>${bar}<text x="${Wd}" y="${y + 17}" font-size="12" text-anchor="end" class="t-ink" style="font-variant-numeric:tabular-nums">${r.v}</text></g>`;
+  });
+  g += `<line x1="${lw}" x2="${lw}" y1="0" y2="${H}" class="axisl"/>`;
+  el.innerHTML = `<svg width="${Wd}" height="${H}" viewBox="0 0 ${Wd} ${H}" role="img" aria-label="Waterfall from the WHO estimate to routinely reported ${nm()}">${g}</svg>`;
+}
+
+/* paired bars */
+function renderPair(c) {
+  const el = $('#pair'), Wd = cw(el), lw = 74, bw = Wd - lw - 4, est = c.m.est, sc = bw / est, bh = 34;
+  let top = '', bot = '', x = lw, x2 = lw;
+  c.per.forEach(p => {
+    const wE = p.a.exp * sc, wR = p.a.rep * sc, wG = wE - wR;
+    top += `<g${ta(`<b>${p.s.name}</b><br>Expected: ${full(p.a.exp)} (${P(p.a.exp / est, 1)} of WHO estimate)`)}><rect x="${x}" y="0" width="${Math.max(1, wE - 2)}" height="${bh}" style="fill:${p.s.col}"/>${wE > 40 ? `<text x="${x + wE / 2 - 1}" y="${bh / 2 + 4}" font-size="12" text-anchor="middle" style="fill:#0b0b0b;font-weight:600">${P(p.a.exp / est)}</text>` : ''}</g>`;
+    bot += `<g${ta(`<b>${p.s.name}</b><br>Reported: ${full(p.a.rep)}<br>Expected but not reported: ${full(p.a.gap)}<br>${P(p.a.pc, 1)} captured`)}><rect x="${x2}" y="0" width="${Math.max(1, wR)}" height="${bh}" style="fill:${p.s.col}"/><rect x="${x2 + wR}" y="0" width="${Math.max(1, wG - 2)}" height="${bh}" style="fill:${p.s.col};opacity:.3"/><rect x="${x2 + wR}" y="0" width="${Math.max(1, wG - 2)}" height="${bh}" style="fill:url(#hatch);stroke:${p.s.col};stroke-width:1.5"/>${wE > 40 ? `<text x="${x2 + wE / 2 - 1}" y="${bh / 2 + 4}" font-size="12" text-anchor="middle" class="t-ink" style="font-weight:600">${P(p.a.pc)}</text>` : ''}</g>`;
+    x += wE; x2 += wE;
+  });
+  const wn = c.m.none * sc;
+  top += `<g${ta(`<b>No formal care</b><br>${full(c.m.none)} (${P(c.m.none / est, 1)}): not reportable`)}><rect x="${x}" y="0" width="${Math.max(1, wn)}" height="${bh}" style="fill:var(--none)"/>${wn > 40 ? `<text x="${x + wn / 2}" y="${bh / 2 + 4}" font-size="12" text-anchor="middle" class="t-ink" style="font-weight:600">${P(c.m.none / est)}</text>` : ''}</g>`;
+  const H = bh * 2 + 24;
+  el.innerHTML = `<svg width="${Wd}" height="${H}" viewBox="0 0 ${Wd} ${H}" role="img" aria-label="Expected versus reported ${nm()} by reporting system"><text x="0" y="${bh / 2 + 4}" font-size="12" class="t-ink2">Expected</text><g>${top}</g><g transform="translate(0,${bh + 12})"><text x="0" y="${bh / 2 + 4}" font-size="12" class="t-ink2">Reported</text>${bot}</g></svg>`;
+  $('#pairLeg').innerHTML = SYS.map(s => `<span><i class="sw" style="background:${s.col}"></i>${s.name}</span>`).join('') + '<span><i class="sw" style="background:var(--none)"></i>No formal care (not reportable)</span><span><i class="sw hatch"></i>Expected but not reported</span>';
+}
+
+/* MDC section */
+function renderMdc(c) {
+  const tg = S.target;
+  $('#mdcSub').textContent = `The smallest change in underlying burden the system would reliably pick up between two ${S.n}-month windows (5% significance, 80% power), after allowing for fluctuating reporting. Target: detect a ${P(tg)} change. Bars to the right of the dashed line miss the target.`;
+  const el = $('#mdcBars'), Wd = cw(el), lw = Wd < 480 ? 96 : 130, rows = SYS.map(s => ({ l: s.short, col: s.col, ids: [s.id] })).concat([{ l: 'All channels pooled', col: 'var(--ink)', ids: ALL }]);
+  rows.forEach(r => { r.md = mdcFor(c.ds, r.ids, c.k, S.n); r.live = agg(c.ds, r.ids, 2025, c.k).live; });
+  const mx = Math.max(tg * 2, ...rows.map(r => r.md ? r.md.eff * 1.15 : 0)), bw = Wd - lw - 70, sc = bw / mx, rh = 34, H = rows.length * rh + 24; let g = '';
+  rows.forEach((r, i) => {
+    const y = 20 + i * rh;
+    g += `<text x="0" y="${y + 18}" font-size="12" class="t-ink2">${r.l}</text>`;
+    if (r.md) g += `<g${ta(`<b>${r.l}</b><br>Sampling MDC ${P(r.md.pct, 1)}<br>Reporting-artefact noise ${P(r.md.art, 1)}<br>Effective MDC ${P(r.md.eff, 1)}<br>Chance of detecting a ${P(tg)} change: ${P(power(tg, r.md.eff))}`)}><rect x="${lw}" y="${y + 4}" width="${Math.max(2, r.md.eff * sc)}" height="20" rx="2" style="fill:${r.col}"/><text x="${lw + r.md.eff * sc + 6}" y="${y + 18}" font-size="12" class="t-ink" style="font-weight:600">${P(r.md.eff, 1)}${r.md.eff > tg ? ' ⚑' : ' ✓'}</text></g>`;
+    else g += `<text x="${lw + 4}" y="${y + 18}" font-size="12" class="t-muted">${r.live ? 'Too few events' : 'Not live'}</text>`;
+  });
+  g += `<line x1="${lw + tg * sc}" x2="${lw + tg * sc}" y1="14" y2="${H}" class="xh"/><text x="${lw + tg * sc}" y="10" font-size="11" text-anchor="middle" class="t-muted">Target ${P(tg)}</text><line x1="${lw}" x2="${lw}" y1="14" y2="${H}" class="axisl"/>`;
+  const pl = rows[rows.length - 1].md;
+  el.innerHTML = `<svg width="${Wd}" height="${H}" viewBox="0 0 ${Wd} ${H}" role="img" aria-label="Effective minimum detectable change by channel">${g}</svg>` +
+    `<p class="sub" style="margin:8px 0 0">✓ meets the ${P(tg)} target. ⚑ misses it: a ${P(tg)} change would not stand out from noise. Pooling channels averages out part of the noise.` +
+    (pl ? ` With all channels pooled, the chance of detecting a ${P(tg)} change is <b>${P(power(tg, pl.eff))}</b>.` : '') + '</p>';
+}
+
+/* scenario */
+function renderScenario(c) {
+  const n = S.n, delta = S.scen.delta / 100, mp = monthlyAgg(c.ds, ALL, c.k), pooled = mdc(mp.rep, mp.c, n), info = {}; let tot = 0;
+  SYS.forEach(s => { const ma = monthlyAgg(c.ds, [s.id], c.k), sum = ma.rep.slice(T - 12).reduce((p, v) => p + v, 0); info[s.id] = { md: mdc(ma.rep, ma.c, n), sum }; tot += sum; });
+  SYS.forEach(s => { info[s.id].share = tot ? info[s.id].sum / tot : 0; });
+  $('#scDv').textContent = (S.scen.delta > 0 ? '+' : S.scen.delta < 0 ? '−' : '') + Math.abs(S.scen.delta) + '%';
+  const sel = info[S.scen.sys], sy = sysById(S.scen.sys), obs = delta * sel.share;
+  const verdict = p => p == null ? '<span class="verdict">Cannot assess</span>' : p >= 0.8 ? `<span class="verdict v-ok">Likely detected · power ${P(p)}</span>` : p >= 0.5 ? `<span class="verdict">Might be missed · power ${P(p)}</span>` : `<span class="verdict v-no">Likely missed · power ${P(p)}</span>`;
+  const pOwn = sel.md ? power(delta, sel.md.eff) : null, pPool = pooled ? power(obs, pooled.eff) : null, sgn = v => (v > 0 ? '+' : v < 0 ? '−' : '') + P(Math.abs(v), 1);
+  const m = c.m, vis = m.est ? m.expC / m.est : 0, lost = m.est ? (m.exp - m.expC) / m.est : 0, nf0 = m.est ? m.none / m.est : 0;
+  $('#scRes').innerHTML =
+    `<p>If burden among people using <b>${sy.name}</b> changes by <b>${sgn(delta)}</b>:</p>` +
+    `<p style="margin-top:8px">That channel's own series would show about <b>${sgn(delta)}</b> against an effective MDC of <b>${sel.md ? P(sel.md.eff, 1) : 'n/a'}</b>. ${verdict(pOwn)}</p>` +
+    `<p style="margin-top:8px">The combined system would show about <b>${sgn(obs)}</b>, because ${sy.short} is ${P(sel.share)} of reported ${nm()}, against a pooled effective MDC of <b>${pooled ? P(pooled.eff, 1) : 'n/a'}</b>. ${verdict(pPool)}</p>` +
+    `<h3 style="margin-top:14px">Blind fraction: ${P(lost + nf0)} of the WHO estimate</h3>` +
+    `<div class="bar3" role="img" aria-label="Share of the WHO estimate seen by surveillance, in non-reporting units, and outside care"><div style="flex:${vis};background:var(--ink)"${ta(`Expected through units that reported: ${P(vis, 1)}`)}></div><div style="flex:${lost};background:repeating-linear-gradient(45deg,var(--ink2) 0 1.5px,var(--surface) 1.5px 5px);border:1px solid var(--axis)"${ta(`Reportable, but in units that did not report: ${P(lost, 1)}`)}></div><div style="flex:${nf0};background:var(--none)"${ta(`No formal care: ${P(nf0, 1)}`)}></div></div>` +
+    `<div class="legend" style="margin-top:4px"><span><i class="sw" style="background:var(--ink)"></i>Seen by reporting units ${P(vis)}</span><span><i class="sw hatch"></i>In non-reporting units ${P(lost)}</span><span><i class="sw" style="background:var(--none)"></i>No formal care ${P(nf0)}</span></div>` +
+    `<p class="sub" style="margin:8px 0 0">Changes in the blind fraction are invisible to routine data.</p>`;
+  let h = '<table><thead><tr><th>If this channel changes</th><th>Share of reported</th><th>Own effective MDC</th><th>Seen in combined</th><th>Power in combined</th></tr></thead><tbody>';
+  SYS.forEach(s => { const i = info[s.id], o = delta * i.share, pw = pooled ? power(o, pooled.eff) : null; h += `<tr class="${s.id === S.scen.sys ? 'sum' : ''}"><td>${s.short}</td><td>${P(i.share, 1)}</td><td>${i.md ? P(i.md.eff, 1) : 'n/a'}</td><td>${sgn(o)}</td><td>${P(pw)}</td></tr>`; });
+  $('#scTbl').innerHTML = h + `</tbody></table><p class="sub" style="margin:8px 0 0">Power: chance of detecting the change at 5% significance. A channel with a small share barely moves the combined series.</p>`;
+}
+
+/* wiring */
+function setTitles() {
+  $('#h-mdc').textContent = `Can the system detect a ${P(S.target)} change?`;
+  $('#h-wf').textContent = `From WHO-estimated ${nm()} to routinely reported ${nm()}`;
+  $('#mCases').setAttribute('aria-pressed', S.measure === 'cases'); $('#mDeaths').setAttribute('aria-pressed', S.measure === 'deaths');
+}
+function render() { const c = ctx(); setTitles(); renderHead(c); renderWaterfall(c); renderPair(c); renderMdc(c); renderScenario(c); }
+function fillDist() {
+  $('#fDist').innerHTML = '<option value="all">All districts</option>' + D.filter(d => S.state === 'all' || d.state === +S.state).map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+  $('#fDist').value = S.dist;
+}
+function init() {
+  $('#fState').innerHTML = '<option value="all">All states</option>' + STATES.map((s, i) => `<option value="${i}">${s.name}</option>`).join('');
+  fillDist();
+  $('#scSys').innerHTML = SYS.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  $('#fState').addEventListener('change', e => { S.state = e.target.value; S.dist = 'all'; fillDist(); render(); });
+  $('#fDist').addEventListener('change', e => { S.dist = e.target.value; if (S.dist !== 'all') { S.state = String(D[+S.dist].state); $('#fState').value = S.state; fillDist(); } render(); });
+  $('#mCases').addEventListener('click', () => { S.measure = 'cases'; render(); });
+  $('#mDeaths').addEventListener('click', () => { S.measure = 'deaths'; render(); });
+  $('#fN').addEventListener('change', e => { S.n = +e.target.value; render(); });
+  $('#fT').addEventListener('change', e => { S.target = +e.target.value / 100; render(); });
+  $('#scSys').addEventListener('change', e => { S.scen.sys = e.target.value; render(); });
+  $('#scD').addEventListener('input', e => { S.scen.delta = +e.target.value; render(); });
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render, 150); });
+  render();
+}
+init();
+
+</script>
+
+</body>
+</html>
